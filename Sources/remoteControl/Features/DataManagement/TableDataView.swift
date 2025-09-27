@@ -4,6 +4,8 @@ struct TableDataView: View {
     let table: SchemaTable
     @ObservedObject var dataService: DataService
     @State private var showingAddRecord = false
+    @State private var showingEditRecord = false
+    @State private var recordToEdit: DataRecord?
     
     var body: some View {
         VStack(spacing: 0) {
@@ -19,14 +21,27 @@ struct TableDataView: View {
             // Data content
             TableDataContent(
                 table: table,
-                dataService: dataService
+                dataService: dataService,
+                onEditRecord: { record in
+                    recordToEdit = record
+                    showingEditRecord = true
+                }
             )
         }
         .sheet(isPresented: $showingAddRecord) {
             AddRecordView(
-                schema: Schema(tables: [table]),
+                table: table,
                 dataService: dataService
             )
+        }
+        .sheet(isPresented: $showingEditRecord) {
+            if let recordToEdit = recordToEdit {
+                EditRecordView(
+                    record: recordToEdit,
+                    table: table,
+                    dataService: dataService
+                )
+            }
         }
     }
 }
@@ -112,6 +127,7 @@ struct TableDataHeader: View {
 struct TableDataContent: View {
     let table: SchemaTable
     @ObservedObject var dataService: DataService
+    let onEditRecord: (DataRecord) -> Void
     
     var body: some View {
         if dataService.isLoading {
@@ -122,7 +138,7 @@ struct TableDataContent: View {
         } else if dataService.records.isEmpty {
             TableEmptyDataView()
         } else {
-            TableDataGrid(table: table, dataService: dataService)
+                TableDataGrid(table: table, dataService: dataService, onEditRecord: onEditRecord)
         }
     }
 }
@@ -130,6 +146,7 @@ struct TableDataContent: View {
 struct TableDataGrid: View {
     let table: SchemaTable
     @ObservedObject var dataService: DataService
+    let onEditRecord: (DataRecord) -> Void
     
     var body: some View {
         ScrollView {
@@ -138,7 +155,10 @@ struct TableDataGrid: View {
                     DataRecordCard(
                         record: record,
                         table: table,
-                        dataService: dataService
+                        dataService: dataService,
+                        onEdit: {
+                            onEditRecord(record)
+                        }
                     )
                 }
             }
@@ -151,6 +171,7 @@ struct DataRecordCard: View {
     let record: DataRecord
     let table: SchemaTable
     @ObservedObject var dataService: DataService
+    let onEdit: () -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -161,7 +182,7 @@ struct DataRecordCard: View {
                 // Action buttons
                 HStack(spacing: 8) {
                     Button("Редактировать") {
-                        // TODO: Edit record
+                        onEdit()
                     }
                     .font(.caption)
                     .buttonStyle(.plain)

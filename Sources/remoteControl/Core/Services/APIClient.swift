@@ -81,7 +81,7 @@ class APIClient: ObservableObject {
         var headers: [String: String] = [:]
         
         if let secret = secret, !secret.isEmpty {
-            headers["REMOTE_CONTROL_SECRET"] = secret
+            headers["X-Remote-Secret"] = secret
         }
         
         return request(
