@@ -59,11 +59,20 @@ struct ContentView: View {
                 WelcomeView(sidebarVisible: $sidebarVisible)
             }
         }
+        .onAppear {
+            // Устанавливаем активную компанию при запуске
+            if let activeCompany = companyStorage.activeCompany {
+                print("🏢 RemoteControlApp: Setting initial company: \(activeCompany.name)")
+                dataService.setCompany(activeCompany)
+            }
+        }
         .onChange(of: companyStorage.activeCompany) { company in
             if let company = company {
+                print("🏢 RemoteControlApp: Active company changed to: \(company.name)")
                 dataService.setCompany(company)
                 schemaService.clearSchema()
             } else {
+                print("🏢 RemoteControlApp: No active company")
                 schemaService.clearSchema()
                 dataService.records = []
             }

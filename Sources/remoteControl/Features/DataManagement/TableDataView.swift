@@ -154,12 +154,8 @@ struct DataRecordCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Record header with ID
+            // Record header
             HStack {
-                Text("ID: \(record.id.uuidString.prefix(8))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
                 Spacer()
                 
                 // Action buttons
@@ -181,11 +177,8 @@ struct DataRecordCard: View {
             
             Divider()
             
-            // Fields grid
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 8) {
+            // Fields list
+            VStack(alignment: .leading, spacing: 8) {
                 ForEach(table.fields, id: \.id) { field in
                     FieldValueView(
                         field: field,
@@ -208,30 +201,47 @@ struct FieldValueView: View {
     let value: AnyCodable?
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
-                Image(systemName: fieldIcon)
+        HStack(alignment: .top, spacing: 12) {
+            // Field info
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: fieldIcon)
+                        .font(.caption2)
+                        .foregroundColor(fieldTypeColor)
+                        .frame(width: 12)
+                    
+                    Text(field.name)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    if field.required {
+                        Text("*")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                    
+                    if field.readonly {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                }
+                
+                Text(field.type.rawValue.capitalized)
                     .font(.caption2)
                     .foregroundColor(.secondary)
-                
-                Text(field.name)
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-                
-                if field.required {
-                    Text("*")
-                        .font(.caption)
-                        .foregroundColor(.red)
-                }
             }
+            .frame(width: 120, alignment: .leading)
             
+            // Value
             Text(formattedValue)
-                .font(.system(size: 13))
+                .font(.subheadline)
                 .foregroundColor(field.readonly ? .secondary : .primary)
-                .lineLimit(3)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
     
     private var fieldIcon: String {
@@ -248,6 +258,16 @@ struct FieldValueView: View {
         }
     }
     
+    private var fieldTypeColor: Color {
+        switch field.type {
+        case .string, .text, .url, .email, .password: return .blue
+        case .integer, .decimal: return .green
+        case .boolean: return .purple
+        case .date, .datetime: return .orange
+        case .json: return .red
+        }
+    }
+    
     private var formattedValue: String {
         guard let value = value else { return "—" }
         
@@ -255,6 +275,8 @@ struct FieldValueView: View {
         case .boolean:
             if let boolValue = value.value as? Bool {
                 return boolValue ? "Да" : "Нет"
+            } else if let intValue = value.value as? Int {
+                return intValue == 1 ? "Да" : "Нет"
             }
             return String(describing: value.value)
         case .date:
@@ -263,6 +285,15 @@ struct FieldValueView: View {
                 formatter.dateStyle = .medium
                 formatter.timeStyle = .none
                 return formatter.string(from: dateValue)
+            } else if let stringValue = value.value as? String {
+                // Try to parse ISO date string
+                if let date = ISO8601DateFormatter().date(from: stringValue) {
+                    let formatter = DateFormatter()
+                    formatter.dateStyle = .medium
+                    formatter.timeStyle = .none
+                    return formatter.string(from: date)
+                }
+                return stringValue
             }
             return String(describing: value.value)
         case .datetime:
@@ -271,6 +302,15 @@ struct FieldValueView: View {
                 formatter.dateStyle = .short
                 formatter.timeStyle = .short
                 return formatter.string(from: dateValue)
+            } else if let stringValue = value.value as? String {
+                // Try to parse ISO datetime string
+                if let date = ISO8601DateFormatter().date(from: stringValue) {
+                    let formatter = DateFormatter()
+                    formatter.dateStyle = .short
+                    formatter.timeStyle = .short
+                    return formatter.string(from: date)
+                }
+                return stringValue
             }
             return String(describing: value.value)
         case .decimal:

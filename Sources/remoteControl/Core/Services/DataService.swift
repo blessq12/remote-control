@@ -38,15 +38,8 @@ class DataService: ObservableObject {
     
     func setCompany(_ company: Company) {
         currentCompany = company
-        fetchRecords()
-    }
-    
-    func fetchRecords() {
-        guard let company = currentCompany else { return }
-        
-        isLoading = true
-        error = nil
-        connectionStatus = .connecting
+        print("🏢 DataService: Company set to \(company.name)")
+        // Don't fetch records here - wait for table selection
     }
     
     func fetchRecords(for table: SchemaTable, page: Int = 1, limit: Int = 20) {

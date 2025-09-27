@@ -56,8 +56,10 @@ struct DataTableView: View {
                         viewMode = .tableSchema(table)
                     },
                     onViewData: { table in
+                        print("🔘 DataTableView: onViewData called for table: \(table.name)")
                         selectedTable = table
                         viewMode = .tableData(table)
+                        print("🔘 DataTableView: About to call dataService.fetchRecords")
                         dataService.fetchRecords(for: table)
                     },
                     onAddRecord: { table in

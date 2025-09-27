@@ -6,6 +6,14 @@ struct TableListView: View {
     let onViewData: (SchemaTable) -> Void
     let onAddRecord: (SchemaTable) -> Void
     
+    init(tables: [SchemaTable], onViewSchema: @escaping (SchemaTable) -> Void, onViewData: @escaping (SchemaTable) -> Void, onAddRecord: @escaping (SchemaTable) -> Void) {
+        self.tables = tables
+        self.onViewSchema = onViewSchema
+        self.onViewData = onViewData
+        self.onAddRecord = onAddRecord
+        print("🔘 TableListView: Initialized with \(tables.count) tables")
+    }
+    
     private let columns = [
         GridItem(.adaptive(minimum: 350, maximum: 400), spacing: 24)
     ]
@@ -33,6 +41,14 @@ struct TableCardView: View {
     let onViewSchema: () -> Void
     let onViewData: () -> Void
     let onAddRecord: () -> Void
+    
+    init(table: SchemaTable, onViewSchema: @escaping () -> Void, onViewData: @escaping () -> Void, onAddRecord: @escaping () -> Void) {
+        self.table = table
+        self.onViewSchema = onViewSchema
+        self.onViewData = onViewData
+        self.onAddRecord = onAddRecord
+        print("🔘 TableCardView: Created for table: \(table.name)")
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -78,7 +94,10 @@ struct TableCardView: View {
                 
                 // Data and Add buttons
                 HStack(spacing: 10) {
-                    Button(action: onViewData) {
+                    Button(action: {
+                        print("🔘 TableListView: 'Данные' button pressed for table: \(table.name)")
+                        onViewData()
+                    }) {
                         HStack(spacing: 6) {
                             Image(systemName: "eye")
                                 .font(.subheadline)

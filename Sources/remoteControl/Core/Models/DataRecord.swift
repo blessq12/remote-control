@@ -23,7 +23,7 @@ struct DataRecord: Identifiable, Codable {
         var data: [String: AnyCodable] = [:]
         let allKeys = container.allKeys
         
-        print("🔍 DataRecord: Decoding record with keys: \(allKeys.map { $0.stringValue })")
+        print("🔍 DataRecord: Decoding record with \(allKeys.count) keys: \(allKeys.map { $0.stringValue })")
         
         for key in allKeys {
             if key.stringValue != "id" && key.stringValue != "created_at" && key.stringValue != "updated_at" {
@@ -105,6 +105,10 @@ struct AnyCodable: Codable {
             value = double
         } else if let string = try? container.decode(String.self) {
             value = string
+        } else if let array = try? container.decode([AnyCodable].self) {
+            value = array.map { $0.value }
+        } else if let dict = try? container.decode([String: AnyCodable].self) {
+            value = dict.mapValues { $0.value }
         } else {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "AnyCodable value cannot be decoded")
         }
