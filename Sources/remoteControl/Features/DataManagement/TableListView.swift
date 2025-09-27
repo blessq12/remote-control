@@ -2,11 +2,12 @@ import SwiftUI
 
 struct TableListView: View {
     let tables: [SchemaTable]
+    let onViewSchema: (SchemaTable) -> Void
     let onViewData: (SchemaTable) -> Void
     let onAddRecord: (SchemaTable) -> Void
     
     private let columns = [
-        GridItem(.adaptive(minimum: 300, maximum: 400), spacing: 20)
+        GridItem(.adaptive(minimum: 280, maximum: 320), spacing: 20)
     ]
     
     var body: some View {
@@ -15,6 +16,7 @@ struct TableListView: View {
                 ForEach(tables, id: \.id) { table in
                     TableCardView(
                         table: table,
+                        onViewSchema: { onViewSchema(table) },
                         onViewData: { onViewData(table) },
                         onAddRecord: { onAddRecord(table) }
                     )
@@ -27,6 +29,7 @@ struct TableListView: View {
 
 struct TableCardView: View {
     let table: SchemaTable
+    let onViewSchema: () -> Void
     let onViewData: () -> Void
     let onAddRecord: () -> Void
     
@@ -51,70 +54,65 @@ struct TableCardView: View {
                 Spacer()
             }
             
-            // Fields preview
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Поля:")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-                
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 4) {
-                    ForEach(table.fields.prefix(6), id: \.id) { field in
-                        FieldChipView(field: field)
-                    }
-                    
-                    if table.fields.count > 6 {
-                        Text("+\(table.fields.count - 6) еще")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 2)
-                            .background(Color.gray.opacity(0.2))
-                            .cornerRadius(4)
-                    }
-                }
-            }
-            
-            Divider()
+            Spacer()
             
             // Action buttons
-            HStack(spacing: 12) {
-                Button(action: onViewData) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "eye")
+            VStack(spacing: 8) {
+                // Schema button
+                Button(action: onViewSchema) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "list.bullet.rectangle")
                             .font(.caption)
-                        Text("Данные")
+                        Text("Просмотр схемы")
                             .font(.caption)
                             .fontWeight(.medium)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.blue.opacity(0.1))
-                    .foregroundColor(.blue)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.purple.opacity(0.1))
+                    .foregroundColor(.purple)
                     .cornerRadius(8)
                 }
                 .buttonStyle(.plain)
                 
-                Button(action: onAddRecord) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus")
-                            .font(.caption)
-                        Text("Добавить")
-                            .font(.caption)
-                            .fontWeight(.medium)
+                // Data and Add buttons
+                HStack(spacing: 8) {
+                    Button(action: onViewData) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "eye")
+                                .font(.caption)
+                            Text("Данные")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(Color.blue.opacity(0.1))
+                        .foregroundColor(.blue)
+                        .cornerRadius(6)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.green.opacity(0.1))
-                    .foregroundColor(.green)
-                    .cornerRadius(8)
+                    .buttonStyle(.plain)
+                    
+                    Button(action: onAddRecord) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "plus")
+                                .font(.caption)
+                            Text("Добавить")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(Color.green.opacity(0.1))
+                        .foregroundColor(.green)
+                        .cornerRadius(6)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                
-                Spacer()
             }
         }
         .padding()
+        .frame(height: 140)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color(NSColor.controlBackgroundColor))
@@ -123,54 +121,6 @@ struct TableCardView: View {
     }
 }
 
-struct FieldChipView: View {
-    let field: SchemaField
-    
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: fieldIcon)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-            
-            Text(field.name)
-                .font(.caption)
-                .lineLimit(1)
-                .foregroundColor(.primary)
-            
-            if field.required {
-                Text("*")
-                    .font(.caption)
-                    .foregroundColor(.red)
-            }
-            
-            if field.readonly {
-                Image(systemName: "lock")
-                    .font(.caption2)
-                    .foregroundColor(.orange)
-            }
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background(
-            Capsule()
-                .fill(Color.gray.opacity(0.1))
-        )
-    }
-    
-    private var fieldIcon: String {
-        switch field.type {
-        case .string, .text: return "textformat"
-        case .integer, .decimal: return "number"
-        case .boolean: return "checkmark.circle"
-        case .date: return "calendar"
-        case .datetime: return "clock"
-        case .email: return "envelope"
-        case .url: return "link"
-        case .password: return "lock"
-        case .json: return "curlybraces"
-        }
-    }
-}
 
 #Preview {
     let sampleTables = [
@@ -200,6 +150,7 @@ struct FieldChipView: View {
     
     return TableListView(
         tables: sampleTables,
+        onViewSchema: { _ in },
         onViewData: { _ in },
         onAddRecord: { _ in }
     )

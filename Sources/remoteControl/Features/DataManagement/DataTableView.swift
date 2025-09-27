@@ -9,6 +9,7 @@ struct DataTableView: View {
     enum ViewMode {
         case tablesList
         case tableData(SchemaTable)
+        case tableSchema(SchemaTable)
     }
     
     var body: some View {
@@ -18,6 +19,8 @@ struct DataTableView: View {
                 TablesListView()
             case .tableData(let table):
                 TableDataDetailView(table: table)
+            case .tableSchema(let table):
+                TableSchemaDetailView(table: table)
             }
         }
     }
@@ -47,6 +50,10 @@ struct DataTableView: View {
             if let schema = schemaService.currentSchema {
                 TableListView(
                     tables: schema.tables,
+                    onViewSchema: { table in
+                        selectedTable = table
+                        viewMode = .tableSchema(table)
+                    },
                     onViewData: { table in
                         selectedTable = table
                         viewMode = .tableData(table)
@@ -88,6 +95,34 @@ struct DataTableView: View {
             
             // Table data view
             TableDataView(table: table, dataService: dataService)
+        }
+    }
+    
+    @ViewBuilder
+    private func TableSchemaDetailView(table: SchemaTable) -> some View {
+        VStack(spacing: 0) {
+            // Back button and table info
+            HStack {
+                Button(action: {
+                    viewMode = .tablesList
+                    selectedTable = nil
+                }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Назад к таблицам")
+                    }
+                    .font(.subheadline)
+                }
+                .buttonStyle(.plain)
+                
+                Spacer()
+            }
+            .padding()
+            
+            Divider()
+            
+            // Schema view
+            TableSchemaView(table: table)
         }
     }
 }
