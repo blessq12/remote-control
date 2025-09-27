@@ -46,6 +46,12 @@ class APIClient: ObservableObject {
         return session.dataTaskPublisher(for: request)
             .tryMap { data, response in
                 try self.validateResponse(data: data, response: response)
+                
+                // Debug: Print raw response
+                if let responseString = String(data: data, encoding: .utf8) {
+                    print("📡 APIClient: Raw response: \(responseString.prefix(500))...")
+                }
+                
                 return data
             }
             .decode(type: T.self, decoder: JSONDecoder())

@@ -50,7 +50,10 @@ class DataService: ObservableObject {
     }
     
     func fetchRecords(for table: SchemaTable, page: Int = 1, limit: Int = 20) {
-        guard let company = currentCompany else { return }
+        guard let company = currentCompany else { 
+            print("❌ DataService: No current company")
+            return 
+        }
         
         currentTable = table
         isLoading = true
@@ -58,6 +61,7 @@ class DataService: ObservableObject {
         connectionStatus = .connecting
         
         let recordsURL = "\(company.url)/api/remote/\(table.name)?page=\(page)&limit=\(limit)"
+        print("🔍 DataService: Fetching records from: \(recordsURL)")
         
         apiClient.requestWithAuth(
             url: recordsURL,
@@ -69,11 +73,14 @@ class DataService: ObservableObject {
             receiveCompletion: { [weak self] completion in
                 self?.isLoading = false
                 if case .failure(let apiError) = completion {
+                    print("❌ DataService: Failed to fetch records: \(apiError.errorDescription ?? "Unknown error")")
                     self?.error = apiError.errorDescription
                     self?.connectionStatus = .failed(apiError.errorDescription ?? "Ошибка загрузки данных")
                 }
             },
             receiveValue: { [weak self] response in
+                print("✅ DataService: Successfully fetched \(response.data.count) records")
+                print("📊 DataService: Pagination - page \(response.pagination.page) of \(response.pagination.pages)")
                 self?.records = response.data
                 self?.pagination = response.pagination
                 self?.connectionStatus = .connected

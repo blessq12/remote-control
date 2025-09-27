@@ -23,10 +23,15 @@ struct DataRecord: Identifiable, Codable {
         var data: [String: AnyCodable] = [:]
         let allKeys = container.allKeys
         
+        print("🔍 DataRecord: Decoding record with keys: \(allKeys.map { $0.stringValue })")
+        
         for key in allKeys {
             if key.stringValue != "id" && key.stringValue != "created_at" && key.stringValue != "updated_at" {
                 if let value = try? container.decode(AnyCodable.self, forKey: key) {
                     data[key.stringValue] = value
+                    print("✅ DataRecord: Decoded field '\(key.stringValue)': \(value.value)")
+                } else {
+                    print("❌ DataRecord: Failed to decode field '\(key.stringValue)'")
                 }
             }
         }
@@ -36,6 +41,8 @@ struct DataRecord: Identifiable, Codable {
         // Парсим даты если они есть
         self.createdAt = try? container.decodeIfPresent(Date.self, forKey: DynamicCodingKey(stringValue: "created_at"))
         self.updatedAt = try? container.decodeIfPresent(Date.self, forKey: DynamicCodingKey(stringValue: "updated_at"))
+        
+        print("📊 DataRecord: Final data has \(data.count) fields")
     }
     
     func encode(to encoder: Encoder) throws {
