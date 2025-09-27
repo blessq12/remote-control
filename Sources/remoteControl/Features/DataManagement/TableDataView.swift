@@ -8,61 +8,58 @@ struct TableDataView: View {
     @State private var recordToEdit: DataRecord?
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with table info and actions
-            TableDataHeader(
-                table: table,
-                dataService: dataService,
-                onAddRecord: {
-                    showingAddRecord = true
-                }
-            )
-            
-            Divider()
-            
-            // Data content
-            TableDataContent(
-                table: table,
-                dataService: dataService,
-                onEditRecord: { record in
-                    recordToEdit = record
-                    showingEditRecord = true
-                }
-            )
-        }
-        .background(
-            NavigationLink(
-                destination: AddRecordView(
+        Group {
+            if showingAddRecord {
+                print("🔘 TableDataView: Showing AddRecordView")
+                return AnyView(AddRecordView(
                     table: table,
                     dataService: dataService,
                     onDismiss: {
                         showingAddRecord = false
                     }
-                ),
-                isActive: $showingAddRecord
-            ) {
-                EmptyView()
-            }
-        )
-        .background(
-            NavigationLink(
-                destination: Group {
-                    if let recordToEdit = recordToEdit {
-                        EditRecordView(
-                            record: recordToEdit,
+                ))
+            } else if showingEditRecord, let recordToEdit = recordToEdit {
+                print("🔘 TableDataView: Showing EditRecordView")
+                return AnyView(
+                    EditRecordView(
+                        record: recordToEdit,
+                        table: table,
+                        dataService: dataService,
+                        onDismiss: {
+                            showingEditRecord = false
+                        }
+                    )
+                )
+            } else {
+                print("🔘 TableDataView: Showing main view")
+                return AnyView(
+                    VStack(spacing: 0) {
+                        // Header with table info and actions
+                        TableDataHeader(
                             table: table,
                             dataService: dataService,
-                            onDismiss: {
-                                showingEditRecord = false
+                            onAddRecord: {
+                                print("🔘 TableDataView: Add record button pressed")
+                                showingAddRecord = true
+                            }
+                        )
+                        
+                        Divider()
+                        
+                        // Data content
+                        TableDataContent(
+                            table: table,
+                            dataService: dataService,
+                            onEditRecord: { record in
+                                print("🔘 TableDataView: Edit record button pressed for record: \(record.id)")
+                                recordToEdit = record
+                                showingEditRecord = true
                             }
                         )
                     }
-                },
-                isActive: $showingEditRecord
-            ) {
-                EmptyView()
+                )
             }
-        )
+        }
     }
 }
 
