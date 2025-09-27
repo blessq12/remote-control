@@ -1,23 +1,32 @@
 import Foundation
 
 struct Schema: Codable {
+    let tables: [SchemaTable]
+}
+
+struct SchemaTable: Codable, Identifiable {
+    let id: UUID
+    let name: String
     let fields: [SchemaField]
-    let endpoints: [String: String]
+    
+    init(name: String, fields: [SchemaField]) {
+        self.id = UUID()
+        self.name = name
+        self.fields = fields
+    }
 }
 
 struct SchemaField: Codable, Identifiable {
     let id: UUID
     let name: String
     let type: FieldType
-    let isRequired: Bool
-    let isEditable: Bool
+    let readonly: Bool
     
-    init(name: String, type: FieldType, isRequired: Bool, isEditable: Bool) {
+    init(name: String, type: FieldType, readonly: Bool) {
         self.id = UUID()
         self.name = name
         self.type = type
-        self.isRequired = isRequired
-        self.isEditable = isEditable
+        self.readonly = readonly
     }
     
     enum FieldType: String, Codable, CaseIterable {
@@ -27,6 +36,21 @@ struct SchemaField: Codable, Identifiable {
         case date = "date"
         case email = "email"
         case url = "url"
+    }
+    
+    // Computed properties for backward compatibility
+    var isRequired: Bool {
+        return false // Based on the new structure, we don't have required field info
+    }
+    
+    var isEditable: Bool {
+        return !readonly
+    }
+}
+
+extension SchemaTable: Equatable {
+    static func == (lhs: SchemaTable, rhs: SchemaTable) -> Bool {
+        lhs.id == rhs.id
     }
 }
 

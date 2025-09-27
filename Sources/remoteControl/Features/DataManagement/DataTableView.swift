@@ -116,7 +116,7 @@ struct DataRowView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(schemaService.currentSchema?.fields ?? [], id: \.id) { field in
+            ForEach(schemaService.currentSchema?.tables.first?.fields ?? [], id: \.id) { field in
                 HStack {
                     Text(field.name + ":")
                         .font(.caption)

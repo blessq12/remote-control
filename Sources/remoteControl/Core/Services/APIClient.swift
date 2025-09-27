@@ -75,7 +75,7 @@ class APIClient: ObservableObject {
         var headers: [String: String] = [:]
         
         if let secret = secret, !secret.isEmpty {
-            headers["remote access control"] = secret
+            headers["REMOTE_CONTROL_SECRET"] = secret
         }
         
         return request(
@@ -90,17 +90,17 @@ class APIClient: ObservableObject {
     // MARK: - Connection Testing
     
     func testConnection(to url: String, secret: String? = nil) -> AnyPublisher<Bool, APIError> {
-        let testURL = "\(url)/health"
+        let checkAccessURL = "\(url)/api/remote/check-access"
         
         return requestWithAuth(
-            url: testURL,
+            url: checkAccessURL,
             method: .GET,
             secret: secret,
-            responseType: HealthResponse.self
+            responseType: CheckAccessResponse.self
         )
         .map { _ in true }
         .catch { error -> AnyPublisher<Bool, APIError> in
-            // If health endpoint doesn't exist, try a simple GET request
+            // If check-access endpoint doesn't exist, try a simple GET request
             return self.simpleConnectionTest(url: url)
                 .eraseToAnyPublisher()
         }
@@ -222,8 +222,9 @@ enum APIError: LocalizedError {
 
 // MARK: - Response Models
 
-struct HealthResponse: Codable {
+struct CheckAccessResponse: Codable {
     let status: String
+    let message: String?
     let timestamp: Date?
 }
 

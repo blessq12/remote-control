@@ -12,7 +12,7 @@ struct AddRecordView: View {
     var body: some View {
         NavigationView {
             Form {
-                ForEach(schema.fields) { field in
+                ForEach(schema.tables.first?.fields ?? [], id: \.id) { field in
                     FieldSection(field: field, fieldValues: $fieldValues)
                 }
             }
@@ -40,7 +40,7 @@ struct AddRecordView: View {
     
     private func saveRecord() {
         // Валидация обязательных полей
-        for field in schema.fields {
+        for field in schema.tables.first?.fields ?? [] {
             if field.isRequired && (fieldValues[field.name]?.isEmpty ?? true) {
                 errorMessage = "Поле '\(field.name)' обязательно для заполнения"
                 showingError = true
@@ -51,7 +51,7 @@ struct AddRecordView: View {
         // Конвертация значений в AnyCodable
         var data: [String: AnyCodable] = [:]
         
-        for field in schema.fields {
+        for field in schema.tables.first?.fields ?? [] {
             let value = fieldValues[field.name] ?? ""
             
             switch field.type {
