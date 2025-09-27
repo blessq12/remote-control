@@ -33,12 +33,14 @@ struct SchemaField: Codable, Identifiable, Equatable {
     let name: String
     let type: FieldType
     let readonly: Bool
+    let required: Bool
     
-    init(name: String, type: FieldType, readonly: Bool) {
+    init(name: String, type: FieldType, readonly: Bool = false, required: Bool = false) {
         self.id = UUID()
         self.name = name
         self.type = type
         self.readonly = readonly
+        self.required = required
     }
     
     // Custom decoder to generate UUID if not provided
@@ -48,10 +50,11 @@ struct SchemaField: Codable, Identifiable, Equatable {
         self.name = try container.decode(String.self, forKey: .name)
         self.type = try container.decode(FieldType.self, forKey: .type)
         self.readonly = try container.decodeIfPresent(Bool.self, forKey: .readonly) ?? false
+        self.required = try container.decodeIfPresent(Bool.self, forKey: .required) ?? false
     }
     
     private enum CodingKeys: String, CodingKey {
-        case name, type, readonly
+        case name, type, readonly, required
     }
     
     enum FieldType: String, Codable, CaseIterable {
@@ -61,11 +64,16 @@ struct SchemaField: Codable, Identifiable, Equatable {
         case date = "date"
         case email = "email"
         case url = "url"
+        case text = "text"
+        case password = "password"
+        case decimal = "decimal"
+        case datetime = "datetime"
+        case json = "json"
     }
     
     // Computed properties for backward compatibility
     var isRequired: Bool {
-        return false // Based on the new structure, we don't have required field info
+        return required
     }
     
     var isEditable: Bool {

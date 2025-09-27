@@ -1,5 +1,13 @@
 import SwiftUI
 
+extension DateFormatter {
+    static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+}
+
 struct DynamicFormView: View {
     let table: SchemaTable
     @Binding var fieldValues: [String: String]
@@ -43,64 +51,7 @@ struct DynamicFormView: View {
         }
     }
     
-    // Validation method
-    func validateForm() -> Bool {
-        for field in table.fields {
-            let value = fieldValues[field.name] ?? ""
-            
-            // Check required fields (we'll assume all non-readonly fields are required for now)
-            if !field.readonly && value.isEmpty {
-                errorMessage = "Поле '\(field.name)' обязательно для заполнения"
-                showingError = true
-                return false
-            }
-            
-            // Type-specific validation
-            if !value.isEmpty {
-                switch field.type {
-                case .email:
-                    if !isValidEmail(value) {
-                        errorMessage = "Поле '\(field.name)' должно содержать корректный email"
-                        showingError = true
-                        return false
-                    }
-                case .url:
-                    if !isValidURL(value) {
-                        errorMessage = "Поле '\(field.name)' должно содержать корректный URL"
-                        showingError = true
-                        return false
-                    }
-                case .integer:
-                    if Int(value) == nil {
-                        errorMessage = "Поле '\(field.name)' должно содержать число"
-                        showingError = true
-                        return false
-                    }
-                case .boolean:
-                    if !["true", "false", "1", "0", "yes", "no"].contains(value.lowercased()) {
-                        errorMessage = "Поле '\(field.name)' должно содержать true/false"
-                        showingError = true
-                        return false
-                    }
-                default:
-                    break
-                }
-            }
-        }
-        return true
-    }
-    
-    // Helper validation methods
-    private func isValidEmail(_ email: String) -> Bool {
-        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-        let emailPredicate = NSPredicate(format:"SELF MATCHES %@", emailRegex)
-        return emailPredicate.evaluate(with: email)
-    }
-    
-    private func isValidURL(_ urlString: String) -> Bool {
-        guard let url = URL(string: urlString) else { return false }
-        return url.scheme != nil && url.host != nil
-    }
+    // No client-side validation - server handles all validation
 }
 
 struct FieldRowView: View {
@@ -150,11 +101,19 @@ struct FieldRowView: View {
                 .cornerRadius(8)
         } else {
             switch field.type {
-            case .string, .email, .url:
+            case .string, .text, .url:
                 TextField(fieldPlaceholder, text: $value)
                     .textFieldStyle(.roundedBorder)
                 
-            case .integer:
+            case .email:
+                TextField(fieldPlaceholder, text: $value)
+                    .textFieldStyle(.roundedBorder)
+                
+            case .password:
+                SecureField(fieldPlaceholder, text: $value)
+                    .textFieldStyle(.roundedBorder)
+                
+            case .integer, .decimal:
                 TextField(fieldPlaceholder, text: $value)
                     .textFieldStyle(.roundedBorder)
                 
@@ -168,6 +127,20 @@ struct FieldRowView: View {
             case .date:
                 DatePicker("", selection: Binding(
                     get: { 
+                        if let date = DateFormatter.dateFormatter.date(from: value) {
+                            return date
+                        }
+                        return Date()
+                    },
+                    set: { newDate in
+                        value = DateFormatter.dateFormatter.string(from: newDate)
+                    }
+                ))
+                .datePickerStyle(.compact)
+                
+            case .datetime:
+                DatePicker("", selection: Binding(
+                    get: { 
                         if let date = ISO8601DateFormatter().date(from: value) {
                             return date
                         }
@@ -178,29 +151,45 @@ struct FieldRowView: View {
                     }
                 ))
                 .datePickerStyle(.compact)
+                
+            case .json:
+                TextEditor(text: $value)
+                    .frame(minHeight: 100)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
             }
         }
     }
     
     private var fieldIcon: String {
         switch field.type {
-        case .string: return "textformat"
-        case .integer: return "number"
+        case .string, .text: return "textformat"
+        case .integer, .decimal: return "number"
         case .boolean: return "checkmark.circle"
         case .date: return "calendar"
+        case .datetime: return "clock"
         case .email: return "envelope"
         case .url: return "link"
+        case .password: return "lock"
+        case .json: return "curlybraces"
         }
     }
     
     private var fieldPlaceholder: String {
         switch field.type {
         case .string: return "Введите текст"
+        case .text: return "Введите длинный текст"
         case .integer: return "Введите число"
+        case .decimal: return "Введите десятичное число"
         case .boolean: return "Выберите значение"
         case .date: return "Выберите дату"
+        case .datetime: return "Выберите дату и время"
         case .email: return "example@domain.com"
         case .url: return "https://example.com"
+        case .password: return "Введите пароль"
+        case .json: return "Введите JSON"
         }
     }
     
@@ -209,8 +198,13 @@ struct FieldRowView: View {
         case .email: return "Введите корректный email адрес"
         case .url: return "Введите полный URL с протоколом"
         case .integer: return "Введите целое число"
+        case .decimal: return "Введите десятичное число (например: 123.45)"
         case .boolean: return "Выберите Да или Нет"
         case .date: return "Выберите дату"
+        case .datetime: return "Выберите дату и время"
+        case .password: return "Введите пароль"
+        case .json: return "Введите валидный JSON"
+        case .text: return "Многострочный текст"
         default: return nil
         }
     }
