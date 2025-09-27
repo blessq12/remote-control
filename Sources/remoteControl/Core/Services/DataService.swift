@@ -5,9 +5,34 @@ class DataService: ObservableObject {
     @Published var records: [DataRecord] = []
     @Published var isLoading = false
     @Published var error: String?
+    @Published var connectionStatus: ConnectionStatus = .unknown
     
     private var cancellables = Set<AnyCancellable>()
     private var currentCompany: Company?
+    private let apiClient = APIClient()
+    
+    enum ConnectionStatus: Equatable {
+        case unknown
+        case connecting
+        case connected
+        case failed(String)
+        
+        var isConnected: Bool {
+            if case .connected = self { return true }
+            return false
+        }
+        
+        static func == (lhs: ConnectionStatus, rhs: ConnectionStatus) -> Bool {
+            switch (lhs, rhs) {
+            case (.unknown, .unknown), (.connecting, .connecting), (.connected, .connected):
+                return true
+            case (.failed(let lhsError), .failed(let rhsError)):
+                return lhsError == rhsError
+            default:
+                return false
+            }
+        }
+    }
     
     func setCompany(_ company: Company) {
         currentCompany = company
@@ -19,116 +44,130 @@ class DataService: ObservableObject {
         
         isLoading = true
         error = nil
+        connectionStatus = .connecting
         
-        guard let url = URL(string: "\(company.url)/records") else {
-            error = "Неверный URL"
-            isLoading = false
-            return
-        }
+        let recordsURL = "\(company.url)/records"
         
-        URLSession.shared.dataTaskPublisher(for: url)
-            .map(\.data)
-            .decode(type: [DataRecord].self, decoder: JSONDecoder())
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] completion in
-                    self?.isLoading = false
-                    if case .failure(let error) = completion {
-                        self?.error = error.localizedDescription
-                    }
-                },
-                receiveValue: { [weak self] records in
-                    self?.records = records
+        apiClient.requestWithAuth(
+            url: recordsURL,
+            method: .GET,
+            secret: company.secret,
+            responseType: [DataRecord].self
+        )
+        .sink(
+            receiveCompletion: { [weak self] completion in
+                self?.isLoading = false
+                if case .failure(let apiError) = completion {
+                    self?.error = apiError.errorDescription
+                    self?.connectionStatus = .failed(apiError.errorDescription ?? "Ошибка загрузки данных")
                 }
-            )
-            .store(in: &cancellables)
+            },
+            receiveValue: { [weak self] records in
+                self?.records = records
+                self?.connectionStatus = .connected
+            }
+        )
+        .store(in: &cancellables)
     }
     
     func createRecord(_ record: DataRecord) {
         guard let company = currentCompany else { return }
         
-        guard let url = URL(string: "\(company.url)/records"),
-              let data = try? JSONEncoder().encode(record) else {
-            error = "Ошибка создания записи"
+        guard let data = try? JSONEncoder().encode(record) else {
+            error = "Ошибка кодирования записи"
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = data
+        let recordsURL = "\(company.url)/records"
         
-        URLSession.shared.dataTaskPublisher(for: request)
-            .map(\.data)
-            .decode(type: DataRecord.self, decoder: JSONDecoder())
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] completion in
-                    if case .failure(let error) = completion {
-                        self?.error = error.localizedDescription
-                    }
-                },
-                receiveValue: { [weak self] newRecord in
-                    self?.records.append(newRecord)
+        apiClient.requestWithAuth(
+            url: recordsURL,
+            method: .POST,
+            secret: company.secret,
+            body: data,
+            responseType: DataRecord.self
+        )
+        .sink(
+            receiveCompletion: { [weak self] completion in
+                if case .failure(let apiError) = completion {
+                    self?.error = apiError.errorDescription
                 }
-            )
-            .store(in: &cancellables)
+            },
+            receiveValue: { [weak self] newRecord in
+                self?.records.append(newRecord)
+            }
+        )
+        .store(in: &cancellables)
     }
     
     func updateRecord(_ record: DataRecord) {
         guard let company = currentCompany else { return }
         
-        guard let url = URL(string: "\(company.url)/records/\(record.id)"),
-              let data = try? JSONEncoder().encode(record) else {
-            error = "Ошибка обновления записи"
+        guard let data = try? JSONEncoder().encode(record) else {
+            error = "Ошибка кодирования записи"
             return
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "PUT"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = data
+        let recordURL = "\(company.url)/records/\(record.id)"
         
-        URLSession.shared.dataTaskPublisher(for: request)
-            .map(\.data)
-            .decode(type: DataRecord.self, decoder: JSONDecoder())
-            .receive(on: DispatchQueue.main)
-            .sink(
-                receiveCompletion: { [weak self] completion in
-                    if case .failure(let error) = completion {
-                        self?.error = error.localizedDescription
-                    }
-                },
-                receiveValue: { [weak self] updatedRecord in
-                    if let index = self?.records.firstIndex(where: { $0.id == updatedRecord.id }) {
-                        self?.records[index] = updatedRecord
-                    }
+        apiClient.requestWithAuth(
+            url: recordURL,
+            method: .PUT,
+            secret: company.secret,
+            body: data,
+            responseType: DataRecord.self
+        )
+        .sink(
+            receiveCompletion: { [weak self] completion in
+                if case .failure(let apiError) = completion {
+                    self?.error = apiError.errorDescription
                 }
-            )
-            .store(in: &cancellables)
+            },
+            receiveValue: { [weak self] updatedRecord in
+                if let index = self?.records.firstIndex(where: { $0.id == updatedRecord.id }) {
+                    self?.records[index] = updatedRecord
+                }
+            }
+        )
+        .store(in: &cancellables)
     }
     
     func deleteRecord(_ record: DataRecord) {
         guard let company = currentCompany else { return }
         
-        guard let url = URL(string: "\(company.url)/records/\(record.id)") else {
-            error = "Ошибка удаления записи"
-            return
-        }
+        let recordURL = "\(company.url)/records/\(record.id)"
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "DELETE"
+        apiClient.requestWithAuth(
+            url: recordURL,
+            method: .DELETE,
+            secret: company.secret,
+            responseType: EmptyResponse.self
+        )
+        .sink(
+            receiveCompletion: { [weak self] completion in
+                if case .failure(let apiError) = completion {
+                    self?.error = apiError.errorDescription
+                }
+            },
+            receiveValue: { [weak self] _ in
+                self?.records.removeAll { $0.id == record.id }
+            }
+        )
+        .store(in: &cancellables)
+    }
+    
+    func testConnection(to company: Company) {
+        connectionStatus = .connecting
         
-        URLSession.shared.dataTaskPublisher(for: request)
-            .receive(on: DispatchQueue.main)
+        apiClient.testConnection(to: company.url, secret: company.secret)
             .sink(
                 receiveCompletion: { [weak self] completion in
-                    if case .failure(let error) = completion {
-                        self?.error = error.localizedDescription
+                    if case .failure(let apiError) = completion {
+                        self?.connectionStatus = .failed(apiError.errorDescription ?? "Ошибка соединения")
                     }
                 },
-                receiveValue: { [weak self] _ in
-                    self?.records.removeAll { $0.id == record.id }
+                receiveValue: { [weak self] isConnected in
+                    self?.connectionStatus = isConnected ? .connected : .failed("Сервер недоступен")
                 }
             )
             .store(in: &cancellables)

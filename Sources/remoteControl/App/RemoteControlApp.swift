@@ -97,12 +97,31 @@ struct DetailView: View {
                             Text(company.url)
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
+                            
+                            // Connection status indicator
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(connectionStatusColor)
+                                    .frame(width: 8, height: 8)
+                                Text(connectionStatusText)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                     
                     Spacer()
                     
                     HStack(spacing: 12) {
+                        Button("Тест соединения") {
+                            schemaService.testConnection(to: company)
+                        }
+                        .buttonStyle(.bordered)
+                        .disabled({
+                            if case .connecting = schemaService.connectionStatus { return true }
+                            return false
+                        }())
+                        
                         Button("Получить схему данных") {
                             schemaService.fetchSchema(for: company)
                         }
@@ -152,6 +171,34 @@ struct DetailView: View {
             } else {
                 DataTableView(dataService: dataService, schemaService: schemaService)
             }
+        }
+    }
+    
+    // MARK: - Connection Status Helpers
+    
+    private var connectionStatusColor: Color {
+        switch schemaService.connectionStatus {
+        case .connected:
+            return .green
+        case .connecting:
+            return .orange
+        case .failed:
+            return .red
+        case .unknown:
+            return .gray
+        }
+    }
+    
+    private var connectionStatusText: String {
+        switch schemaService.connectionStatus {
+        case .connected:
+            return "Подключено"
+        case .connecting:
+            return "Подключение..."
+        case .failed(_):
+            return "Ошибка"
+        case .unknown:
+            return "Не проверено"
         }
     }
 }
