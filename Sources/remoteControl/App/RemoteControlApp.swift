@@ -1,0 +1,175 @@
+import SwiftUI
+
+@main
+struct RemoteControlApp: App {
+    @StateObject private var companyStorage = CompanyStorageService()
+    @StateObject private var schemaService = SchemaService()
+    @StateObject private var dataService = DataService()
+    
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(companyStorage)
+                .environmentObject(schemaService)
+                .environmentObject(dataService)
+                .onAppear {
+                    // Принудительно активируем приложение при запуске
+                    DispatchQueue.main.async {
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
+                }
+        }
+        .windowStyle(.hiddenTitleBar)
+    }
+}
+
+struct ContentView: View {
+    @EnvironmentObject var companyStorage: CompanyStorageService
+    @EnvironmentObject var schemaService: SchemaService
+    @EnvironmentObject var dataService: DataService
+    @State private var sidebarVisible = true
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            if sidebarVisible {
+                SidebarView(companyStorage: companyStorage, onEditCompany: editCompany)
+                    .frame(minWidth: 200, idealWidth: 250, maxWidth: 400)
+                    .background(Color(NSColor.controlBackgroundColor))
+                
+                Divider()
+            }
+            
+            if let activeCompany = companyStorage.activeCompany {
+                DetailView(
+                    company: activeCompany,
+                    schemaService: schemaService,
+                    dataService: dataService,
+                    sidebarVisible: $sidebarVisible
+                )
+            } else {
+                WelcomeView(sidebarVisible: $sidebarVisible)
+            }
+        }
+        .onChange(of: companyStorage.activeCompany) { company in
+            if let company = company {
+                dataService.setCompany(company)
+                schemaService.clearSchema()
+            } else {
+                schemaService.clearSchema()
+                dataService.records = []
+            }
+        }
+    }
+    
+    private func editCompany(_ company: Company) {
+        // Теперь логика редактирования перенесена в SidebarView
+    }
+}
+
+struct DetailView: View {
+    let company: Company
+    @ObservedObject var schemaService: SchemaService
+    @ObservedObject var dataService: DataService
+    @Binding var sidebarVisible: Bool
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Заголовок компании
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(company.name)
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                        
+                        HStack {
+                            Image(systemName: "globe")
+                                .foregroundColor(.secondary)
+                            Text(company.url)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 12) {
+                        Button("Получить схему данных") {
+                            schemaService.fetchSchema(for: company)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(schemaService.isLoading)
+                        
+                        Button(sidebarVisible ? "Скрыть сайдбар" : "Показать сайдбар") {
+                            sidebarVisible.toggle()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding()
+            
+            Divider()
+            
+            // Контент
+            if schemaService.isLoading {
+                ProgressView("Загрузка схемы...")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if let error = schemaService.error {
+                VStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
+                        .foregroundColor(.orange)
+                    Text("Ошибка загрузки схемы")
+                        .font(.headline)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if schemaService.currentSchema == nil {
+                VStack {
+                    Image(systemName: "server.rack")
+                        .font(.largeTitle)
+                        .foregroundColor(.secondary)
+                    Text("Схема не загружена")
+                        .font(.headline)
+                    Text("Проверьте подключение к серверу")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                DataTableView(dataService: dataService, schemaService: schemaService)
+            }
+        }
+    }
+}
+
+struct WelcomeView: View {
+    @Binding var sidebarVisible: Bool
+    
+    var body: some View {
+        VStack {
+            Image(systemName: "server.rack")
+                .font(.system(size: 80))
+                .foregroundColor(.secondary)
+            
+            Text("Remote Control")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+            
+            Text("Выберите компанию для начала работы")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Button(sidebarVisible ? "Скрыть сайдбар" : "Показать сайдбар") {
+                sidebarVisible.toggle()
+            }
+            .buttonStyle(.bordered)
+            .padding(.top, 20)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
