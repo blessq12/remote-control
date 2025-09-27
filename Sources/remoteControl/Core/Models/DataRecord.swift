@@ -1,12 +1,13 @@
 import Foundation
 
 struct DataRecord: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     var data: [String: AnyCodable]
     let createdAt: Date
     var updatedAt: Date
     
     init(data: [String: AnyCodable]) {
+        self.id = UUID()
         self.data = data
         self.createdAt = Date()
         self.updatedAt = Date()

@@ -1,13 +1,14 @@
 import Foundation
 
 struct Company: Identifiable, Codable {
-    let id = UUID()
+    let id: UUID
     var name: String
     var url: String
     var secret: String
     var isActive: Bool = false
     
     init(name: String, url: String, secret: String = "") {
+        self.id = UUID()
         self.name = name
         self.url = url
         self.secret = secret
