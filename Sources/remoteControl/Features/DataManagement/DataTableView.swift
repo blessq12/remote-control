@@ -31,18 +31,19 @@ struct DataTableView: View {
             // Header
             HStack {
                 Text("Таблицы данных")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
                 
                 Spacer()
                 
                 if let schema = schemaService.currentSchema {
                     Text("\(schema.tables.count) таблиц")
-                        .font(.caption)
+                        .font(.title3)
                         .foregroundColor(.secondary)
                 }
             }
-            .padding()
+            .padding(.horizontal, 40)
+            .padding(.vertical, 20)
             
             Divider()
             

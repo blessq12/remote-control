@@ -7,12 +7,12 @@ struct TableListView: View {
     let onAddRecord: (SchemaTable) -> Void
     
     private let columns = [
-        GridItem(.adaptive(minimum: 280, maximum: 320), spacing: 20)
+        GridItem(.adaptive(minimum: 350, maximum: 400), spacing: 24)
     ]
     
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 20) {
+            LazyVGrid(columns: columns, spacing: 24) {
                 ForEach(tables, id: \.id) { table in
                     TableCardView(
                         table: table,
@@ -22,7 +22,8 @@ struct TableListView: View {
                     )
                 }
             }
-            .padding()
+            .padding(.horizontal, 40)
+            .padding(.vertical, 24)
         }
     }
 }
@@ -38,16 +39,16 @@ struct TableCardView: View {
             // Header
             HStack {
                 Image(systemName: "table")
-                    .font(.title2)
+                    .font(.title)
                     .foregroundColor(.blue)
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(table.name)
-                        .font(.headline)
+                        .font(.title3)
                         .fontWeight(.semibold)
                     
                     Text("\(table.fields.count) полей")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
                 
@@ -62,61 +63,61 @@ struct TableCardView: View {
                 Button(action: onViewSchema) {
                     HStack(spacing: 8) {
                         Image(systemName: "list.bullet.rectangle")
-                            .font(.caption)
+                            .font(.subheadline)
                         Text("Просмотр схемы")
-                            .font(.caption)
+                            .font(.subheadline)
                             .fontWeight(.medium)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 10)
                     .background(Color.purple.opacity(0.1))
                     .foregroundColor(.purple)
-                    .cornerRadius(8)
+                    .cornerRadius(10)
                 }
                 .buttonStyle(.plain)
                 
                 // Data and Add buttons
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     Button(action: onViewData) {
                         HStack(spacing: 6) {
                             Image(systemName: "eye")
-                                .font(.caption)
+                                .font(.subheadline)
                             Text("Данные")
-                                .font(.caption)
+                                .font(.subheadline)
                                 .fontWeight(.medium)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 10)
                         .background(Color.blue.opacity(0.1))
                         .foregroundColor(.blue)
-                        .cornerRadius(6)
+                        .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
                     
                     Button(action: onAddRecord) {
                         HStack(spacing: 6) {
                             Image(systemName: "plus")
-                                .font(.caption)
+                                .font(.subheadline)
                             Text("Добавить")
-                                .font(.caption)
+                                .font(.subheadline)
                                 .fontWeight(.medium)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 10)
                         .background(Color.green.opacity(0.1))
                         .foregroundColor(.green)
-                        .cornerRadius(6)
+                        .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
-        .padding()
-        .frame(height: 140)
+        .padding(20)
+        .frame(height: 180)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(Color(NSColor.controlBackgroundColor))
-                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
         )
     }
 }
