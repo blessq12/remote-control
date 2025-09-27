@@ -7,6 +7,9 @@ mkdir -p RemoteControl.app/Contents/Resources
 # Копируем исполняемый файл
 cp .build/release/remoteControl RemoteControl.app/Contents/MacOS/
 
+# Подписываем исполняемый файл (ad-hoc signing для локального использования)
+codesign --force --sign - RemoteControl.app/Contents/MacOS/remoteControl
+
 # Создаем Info.plist
 cat > RemoteControl.app/Contents/Info.plist << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -36,6 +39,9 @@ cat > RemoteControl.app/Contents/Info.plist << EOF
 </dict>
 </plist>
 EOF
+
+# Подписываем все приложение
+codesign --force --sign - RemoteControl.app
 
 echo "App bundle создан: RemoteControl.app"
 echo "Запуск: open RemoteControl.app"
