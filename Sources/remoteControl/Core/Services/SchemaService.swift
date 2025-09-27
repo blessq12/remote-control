@@ -38,7 +38,7 @@ class SchemaService: ObservableObject {
         error = nil
         connectionStatus = .connecting
         
-        let schemaURL = "\(company.url)/api/remote/scheme"
+        let schemaURL = "\(company.url)/api/remote/schema"
         
         apiClient.requestWithAuth(
             url: schemaURL,
