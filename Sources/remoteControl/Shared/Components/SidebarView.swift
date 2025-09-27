@@ -45,7 +45,16 @@ struct SidebarView: View {
             CompanyFormView(companyStorage: companyStorage)
         }
         .sheet(isPresented: $showingEditCompany) {
-            CompanyFormView(companyStorage: companyStorage, company: companyToEdit)
+            if let companyToEdit = companyToEdit {
+                CompanyFormView(companyStorage: companyStorage, company: companyToEdit)
+            } else {
+                EmptyView()
+            }
+        }
+        .onChange(of: showingEditCompany) { showing in
+            if !showing {
+                companyToEdit = nil
+            }
         }
     }
 }
