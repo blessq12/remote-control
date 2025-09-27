@@ -10,6 +10,7 @@ struct TableDataView: View {
             // Header with table info and actions
             TableDataHeader(
                 table: table,
+                dataService: dataService,
                 showingAddRecord: $showingAddRecord
             )
             
@@ -32,6 +33,7 @@ struct TableDataView: View {
 
 struct TableDataHeader: View {
     let table: SchemaTable
+    @ObservedObject var dataService: DataService
     @Binding var showingAddRecord: Bool
     
     var body: some View {
@@ -45,14 +47,50 @@ struct TableDataHeader: View {
                         .fontWeight(.semibold)
                 }
                 
-                Text("\(table.fields.count) полей • \(dataCount) записей")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    Text("\(table.fields.count) полей • \(dataService.records.count) записей")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    
+                    if let pagination = dataService.pagination {
+                        Text("• Страница \(pagination.page) из \(pagination.pages)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
             }
             
             Spacer()
             
             HStack(spacing: 12) {
+                // Pagination controls
+                if let pagination = dataService.pagination, pagination.pages > 1 {
+                    HStack(spacing: 8) {
+                        Button(action: {
+                            if pagination.page > 1 {
+                                dataService.fetchRecords(for: table, page: pagination.page - 1)
+                            }
+                        }) {
+                            Image(systemName: "chevron.left")
+                        }
+                        .disabled(pagination.page <= 1)
+                        
+                        Text("\(pagination.page)/\(pagination.pages)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Button(action: {
+                            if pagination.hasMore {
+                                dataService.fetchRecords(for: table, page: pagination.page + 1)
+                            }
+                        }) {
+                            Image(systemName: "chevron.right")
+                        }
+                        .disabled(!pagination.hasMore)
+                    }
+                    .buttonStyle(.plain)
+                }
+                
                 Button(action: { showingAddRecord = true }) {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
@@ -68,11 +106,6 @@ struct TableDataHeader: View {
             }
         }
         .padding()
-    }
-    
-    private var dataCount: Int {
-        // This would be passed from parent or observed from dataService
-        return 0
     }
 }
 

@@ -3,14 +3,77 @@ import Foundation
 struct DataRecord: Identifiable, Codable {
     let id: UUID
     var data: [String: AnyCodable]
-    let createdAt: Date
-    var updatedAt: Date
+    let createdAt: Date?
+    var updatedAt: Date?
     
     init(data: [String: AnyCodable]) {
         self.id = UUID()
         self.data = data
-        self.createdAt = Date()
-        self.updatedAt = Date()
+        self.createdAt = nil
+        self.updatedAt = nil
+    }
+    
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: DynamicCodingKey.self)
+        
+        // Генерируем UUID для локального использования
+        self.id = UUID()
+        
+        // Извлекаем все поля кроме служебных
+        var data: [String: AnyCodable] = [:]
+        let allKeys = container.allKeys
+        
+        for key in allKeys {
+            if key.stringValue != "id" && key.stringValue != "created_at" && key.stringValue != "updated_at" {
+                if let value = try? container.decode(AnyCodable.self, forKey: key) {
+                    data[key.stringValue] = value
+                }
+            }
+        }
+        
+        self.data = data
+        
+        // Парсим даты если они есть
+        self.createdAt = try? container.decodeIfPresent(Date.self, forKey: DynamicCodingKey(stringValue: "created_at"))
+        self.updatedAt = try? container.decodeIfPresent(Date.self, forKey: DynamicCodingKey(stringValue: "updated_at"))
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: DynamicCodingKey.self)
+        
+        // Кодируем все поля данных
+        for (key, value) in data {
+            try container.encode(value, forKey: DynamicCodingKey(stringValue: key))
+        }
+        
+        // Кодируем даты если они есть
+        if let createdAt = createdAt {
+            try container.encode(createdAt, forKey: DynamicCodingKey(stringValue: "created_at"))
+        }
+        if let updatedAt = updatedAt {
+            try container.encode(updatedAt, forKey: DynamicCodingKey(stringValue: "updated_at"))
+        }
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+}
+
+// Dynamic coding key для работы с произвольными ключами
+struct DynamicCodingKey: CodingKey {
+    var stringValue: String
+    var intValue: Int?
+    
+    init(stringValue: String) {
+        self.stringValue = stringValue
+        self.intValue = nil
+    }
+    
+    init(intValue: Int) {
+        self.stringValue = String(intValue)
+        self.intValue = intValue
     }
 }
 

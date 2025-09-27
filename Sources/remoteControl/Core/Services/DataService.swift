@@ -6,9 +6,11 @@ class DataService: ObservableObject {
     @Published var isLoading = false
     @Published var error: String?
     @Published var connectionStatus: ConnectionStatus = .unknown
+    @Published var pagination: PaginationInfo?
     
     private var cancellables = Set<AnyCancellable>()
     private var currentCompany: Company?
+    private var currentTable: SchemaTable?
     private let apiClient = APIClient()
     
     enum ConnectionStatus: Equatable {
@@ -45,24 +47,23 @@ class DataService: ObservableObject {
         isLoading = true
         error = nil
         connectionStatus = .connecting
-        
-        let recordsURL = "\(company.url)/api/remote/records"
     }
     
-    func fetchRecords(for table: SchemaTable) {
+    func fetchRecords(for table: SchemaTable, page: Int = 1, limit: Int = 20) {
         guard let company = currentCompany else { return }
         
+        currentTable = table
         isLoading = true
         error = nil
         connectionStatus = .connecting
         
-        let recordsURL = "\(company.url)/api/remote/records/\(table.name)"
+        let recordsURL = "\(company.url)/api/remote/\(table.name)?page=\(page)&limit=\(limit)"
         
         apiClient.requestWithAuth(
             url: recordsURL,
             method: .GET,
             secret: company.secret,
-            responseType: [DataRecord].self
+            responseType: PaginatedResponse<[DataRecord]>.self
         )
         .sink(
             receiveCompletion: { [weak self] completion in
@@ -72,8 +73,45 @@ class DataService: ObservableObject {
                     self?.connectionStatus = .failed(apiError.errorDescription ?? "Ошибка загрузки данных")
                 }
             },
-            receiveValue: { [weak self] records in
-                self?.records = records
+            receiveValue: { [weak self] response in
+                self?.records = response.data
+                self?.pagination = response.pagination
+                self?.connectionStatus = .connected
+            }
+        )
+        .store(in: &cancellables)
+    }
+    
+    func fetchRecord(for table: SchemaTable, id: UUID) {
+        guard let company = currentCompany else { return }
+        
+        isLoading = true
+        error = nil
+        connectionStatus = .connecting
+        
+        let recordURL = "\(company.url)/api/remote/\(table.name)/\(id)"
+        
+        apiClient.requestWithAuth(
+            url: recordURL,
+            method: .GET,
+            secret: company.secret,
+            responseType: DataRecord.self
+        )
+        .sink(
+            receiveCompletion: { [weak self] completion in
+                self?.isLoading = false
+                if case .failure(let apiError) = completion {
+                    self?.error = apiError.errorDescription
+                    self?.connectionStatus = .failed(apiError.errorDescription ?? "Ошибка загрузки записи")
+                }
+            },
+            receiveValue: { [weak self] record in
+                // Заменяем запись в списке если она есть, иначе добавляем
+                if let index = self?.records.firstIndex(where: { $0.id == record.id }) {
+                    self?.records[index] = record
+                } else {
+                    self?.records.append(record)
+                }
                 self?.connectionStatus = .connected
             }
         )
@@ -81,14 +119,15 @@ class DataService: ObservableObject {
     }
     
     func createRecord(_ record: DataRecord) {
-        guard let company = currentCompany else { return }
+        guard let company = currentCompany,
+              let table = currentTable else { return }
         
         guard let data = try? JSONEncoder().encode(record) else {
             error = "Ошибка кодирования записи"
             return
         }
         
-        let recordsURL = "\(company.url)/api/remote/records"
+        let recordsURL = "\(company.url)/api/remote/\(table.name)"
         
         apiClient.requestWithAuth(
             url: recordsURL,
@@ -111,14 +150,15 @@ class DataService: ObservableObject {
     }
     
     func updateRecord(_ record: DataRecord) {
-        guard let company = currentCompany else { return }
+        guard let company = currentCompany,
+              let table = currentTable else { return }
         
         guard let data = try? JSONEncoder().encode(record) else {
             error = "Ошибка кодирования записи"
             return
         }
         
-        let recordURL = "\(company.url)/api/remote/records/\(record.id)"
+        let recordURL = "\(company.url)/api/remote/\(table.name)/\(record.id)"
         
         apiClient.requestWithAuth(
             url: recordURL,
@@ -143,9 +183,10 @@ class DataService: ObservableObject {
     }
     
     func deleteRecord(_ record: DataRecord) {
-        guard let company = currentCompany else { return }
+        guard let company = currentCompany,
+              let table = currentTable else { return }
         
-        let recordURL = "\(company.url)/api/remote/records/\(record.id)"
+        let recordURL = "\(company.url)/api/remote/\(table.name)/\(record.id)"
         
         apiClient.requestWithAuth(
             url: recordURL,
