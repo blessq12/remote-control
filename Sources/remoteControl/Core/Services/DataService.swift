@@ -46,7 +46,7 @@ class DataService: ObservableObject {
         error = nil
         connectionStatus = .connecting
         
-        let recordsURL = "\(company.url)/records"
+        let recordsURL = "\(company.url)/api/remote/records"
         
         apiClient.requestWithAuth(
             url: recordsURL,
@@ -78,7 +78,7 @@ class DataService: ObservableObject {
             return
         }
         
-        let recordsURL = "\(company.url)/records"
+        let recordsURL = "\(company.url)/api/remote/records"
         
         apiClient.requestWithAuth(
             url: recordsURL,
@@ -108,7 +108,7 @@ class DataService: ObservableObject {
             return
         }
         
-        let recordURL = "\(company.url)/records/\(record.id)"
+        let recordURL = "\(company.url)/api/remote/records/\(record.id)"
         
         apiClient.requestWithAuth(
             url: recordURL,
@@ -135,7 +135,7 @@ class DataService: ObservableObject {
     func deleteRecord(_ record: DataRecord) {
         guard let company = currentCompany else { return }
         
-        let recordURL = "\(company.url)/records/\(record.id)"
+        let recordURL = "\(company.url)/api/remote/records/\(record.id)"
         
         apiClient.requestWithAuth(
             url: recordURL,
