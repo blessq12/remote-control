@@ -76,18 +76,8 @@ struct AddRecordView: View {
     }
     
     private var isFormValid: Bool {
-        guard let table = selectedTable else { return false }
-        
-        for field in table.fields {
-            let value = fieldValues[field.name] ?? ""
-            
-            // Check required fields
-            if field.required && value.isEmpty {
-                return false
-            }
-        }
-        
-        return true
+        // No client-side validation - server handles all validation
+        return selectedTable != nil
     }
     
     private func saveRecord() {
@@ -99,38 +89,8 @@ struct AddRecordView: View {
         for field in table.fields {
             let value = fieldValues[field.name] ?? ""
             
-            // Convert value based on field type
-            let codableValue: AnyCodable
-            switch field.type {
-            case .string, .text, .email, .url, .password:
-                codableValue = AnyCodable(value)
-            case .integer:
-                codableValue = AnyCodable(Int(value) ?? 0)
-            case .decimal:
-                codableValue = AnyCodable(Double(value) ?? 0.0)
-            case .boolean:
-                codableValue = AnyCodable(value.lowercased() == "true" || value == "1")
-            case .date:
-                if let date = DateFormatter.dateFormatter.date(from: value) {
-                    codableValue = AnyCodable(date)
-                } else {
-                    codableValue = AnyCodable(value)
-                }
-            case .datetime:
-                if let date = ISO8601DateFormatter().date(from: value) {
-                    codableValue = AnyCodable(date)
-                } else {
-                    codableValue = AnyCodable(value)
-                }
-            case .json:
-                // Try to parse JSON, fallback to string if invalid
-                if let jsonData = value.data(using: .utf8),
-                   let jsonObject = try? JSONSerialization.jsonObject(with: jsonData) {
-                    codableValue = AnyCodable(jsonObject)
-                } else {
-                    codableValue = AnyCodable(value)
-                }
-            }
+            // Send all values as strings - server handles type conversion
+            let codableValue = AnyCodable(value)
             
             data[field.name] = codableValue
         }

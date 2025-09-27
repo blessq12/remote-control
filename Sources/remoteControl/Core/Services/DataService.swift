@@ -47,6 +47,16 @@ class DataService: ObservableObject {
         connectionStatus = .connecting
         
         let recordsURL = "\(company.url)/api/remote/records"
+    }
+    
+    func fetchRecords(for table: SchemaTable) {
+        guard let company = currentCompany else { return }
+        
+        isLoading = true
+        error = nil
+        connectionStatus = .connecting
+        
+        let recordsURL = "\(company.url)/api/remote/records/\(table.name)"
         
         apiClient.requestWithAuth(
             url: recordsURL,
