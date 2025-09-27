@@ -75,8 +75,7 @@ class APIClient: ObservableObject {
         var headers: [String: String] = [:]
         
         if let secret = secret, !secret.isEmpty {
-            headers["Authorization"] = "Bearer \(secret)"
-            headers["X-API-Key"] = secret
+            headers["remote access control"] = secret
         }
         
         return request(
