@@ -92,9 +92,7 @@ struct CompanyRowView: View {
             }
             
             Button("Удалить", role: .destructive) {
-                // TODO: Добавить удаление компании
                 onDelete()
-                print("Удаление компании: \(company.name)")
             }
         }
     }
