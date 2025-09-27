@@ -28,15 +28,24 @@ struct ContentView: View {
     @EnvironmentObject var schemaService: SchemaService
     @EnvironmentObject var dataService: DataService
     @State private var sidebarVisible = true
+    @State private var sidebarWidth: CGFloat = 250
     
     var body: some View {
         HStack(spacing: 0) {
             if sidebarVisible {
                 SidebarView(companyStorage: companyStorage, onEditCompany: editCompany)
-                    .frame(minWidth: 200, idealWidth: 250, maxWidth: 400)
+                    .frame(width: sidebarWidth)
                     .background(Color(NSColor.controlBackgroundColor))
                 
-                Divider()
+                // Resizable divider
+                ResizeHandle()
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                let newWidth = sidebarWidth + value.translation.width
+                                sidebarWidth = max(150, min(400, newWidth))
+                            }
+                    )
             }
             
             if let activeCompany = companyStorage.activeCompany {
@@ -171,5 +180,21 @@ struct WelcomeView: View {
             .padding(.top, 20)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct ResizeHandle: View {
+    var body: some View {
+        Rectangle()
+            .fill(Color.clear)
+            .frame(width: 4)
+            .background(Color.gray.opacity(0.3))
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
     }
 }
