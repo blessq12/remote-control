@@ -100,9 +100,27 @@ class APIClient: ObservableObject {
         )
         .map { _ in true }
         .catch { error -> AnyPublisher<Bool, APIError> in
-            // If check-access endpoint doesn't exist, try a simple GET request
-            return self.simpleConnectionTest(url: url)
-                .eraseToAnyPublisher()
+            // Handle specific errors
+            switch error {
+            case .unauthorized:
+                // Wrong secret key
+                return Just(false)
+                    .setFailureType(to: APIError.self)
+                    .eraseToAnyPublisher()
+            case .forbidden:
+                // Access denied
+                return Just(false)
+                    .setFailureType(to: APIError.self)
+                    .eraseToAnyPublisher()
+            case .notFound:
+                // If check-access endpoint doesn't exist, try a simple GET request
+                return self.simpleConnectionTest(url: url)
+                    .eraseToAnyPublisher()
+            default:
+                // Other errors (network, server, etc.)
+                return Fail(error: error)
+                    .eraseToAnyPublisher()
+            }
         }
         .eraseToAnyPublisher()
     }
