@@ -1,10 +1,10 @@
 import Foundation
 
-struct Schema: Codable {
+struct Schema: Codable, Equatable {
     let tables: [SchemaTable]
 }
 
-struct SchemaTable: Codable, Identifiable {
+struct SchemaTable: Codable, Identifiable, Equatable {
     let id: UUID
     let name: String
     let fields: [SchemaField]
@@ -28,7 +28,7 @@ struct SchemaTable: Codable, Identifiable {
     }
 }
 
-struct SchemaField: Codable, Identifiable {
+struct SchemaField: Codable, Identifiable, Equatable {
     let id: UUID
     let name: String
     let type: FieldType
@@ -73,14 +73,3 @@ struct SchemaField: Codable, Identifiable {
     }
 }
 
-extension SchemaTable: Equatable {
-    static func == (lhs: SchemaTable, rhs: SchemaTable) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-extension SchemaField: Equatable {
-    static func == (lhs: SchemaField, rhs: SchemaField) -> Bool {
-        lhs.id == rhs.id
-    }
-}
