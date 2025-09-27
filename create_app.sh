@@ -5,7 +5,7 @@ mkdir -p RemoteControl.app/Contents/MacOS
 mkdir -p RemoteControl.app/Contents/Resources
 
 # Копируем исполняемый файл
-cp .build/debug/remoteControl RemoteControl.app/Contents/MacOS/
+cp .build/release/remoteControl RemoteControl.app/Contents/MacOS/
 
 # Создаем Info.plist
 cat > RemoteControl.app/Contents/Info.plist << EOF
