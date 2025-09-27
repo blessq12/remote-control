@@ -23,7 +23,18 @@ class CompanyStorageService: ObservableObject {
     }
     
     func deleteCompany(_ company: Company) {
+        // Check if we're deleting the active company
+        let wasActive = company.isActive
+        
         companies.removeAll { $0.id == company.id }
+        
+        // If we deleted the active company, clear any remaining active status
+        if wasActive {
+            companies.indices.forEach { index in
+                companies[index].isActive = false
+            }
+        }
+        
         saveCompanies()
     }
     

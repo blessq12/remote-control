@@ -41,14 +41,12 @@ struct SidebarView: View {
             }
             .listStyle(SidebarListStyle())
         }
-        .popover(isPresented: $showingAddCompany, attachmentAnchor: .point(.center)) {
-            AddCompanyView(companyStorage: companyStorage)
-                .frame(width: 400)
+        .sheet(isPresented: $showingAddCompany) {
+            CompanyFormView(companyStorage: companyStorage)
         }
-        .popover(isPresented: $showingEditCompany, attachmentAnchor: .point(.center)) {
+        .sheet(isPresented: $showingEditCompany) {
             if let companyToEdit = companyToEdit {
-                EditCompanyView(companyStorage: companyStorage, company: companyToEdit)
-                    .frame(width: 400)
+                CompanyFormView(companyStorage: companyStorage, company: companyToEdit)
             }
         }
     }
