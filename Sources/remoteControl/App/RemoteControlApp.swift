@@ -156,18 +156,6 @@ struct DetailView: View {
                         .multilineTextAlignment(.center)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if schemaService.currentSchema == nil {
-                VStack {
-                    Image(systemName: "server.rack")
-                        .font(.largeTitle)
-                        .foregroundColor(.secondary)
-                    Text("Схема не загружена")
-                        .font(.headline)
-                    Text("Проверьте подключение к серверу")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 DataTableView(dataService: dataService, schemaService: schemaService)
             }
