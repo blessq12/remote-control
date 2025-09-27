@@ -13,7 +13,9 @@ struct TableDataView: View {
             TableDataHeader(
                 table: table,
                 dataService: dataService,
-                showingAddRecord: $showingAddRecord
+                onAddRecord: {
+                    showingAddRecord = true
+                }
             )
             
             Divider()
@@ -28,28 +30,46 @@ struct TableDataView: View {
                 }
             )
         }
-        .sheet(isPresented: $showingAddRecord) {
-            AddRecordView(
-                table: table,
-                dataService: dataService
-            )
-        }
-        .sheet(isPresented: $showingEditRecord) {
-            if let recordToEdit = recordToEdit {
-                EditRecordView(
-                    record: recordToEdit,
+        .background(
+            NavigationLink(
+                destination: AddRecordView(
                     table: table,
-                    dataService: dataService
-                )
+                    dataService: dataService,
+                    onDismiss: {
+                        showingAddRecord = false
+                    }
+                ),
+                isActive: $showingAddRecord
+            ) {
+                EmptyView()
             }
-        }
+        )
+        .background(
+            NavigationLink(
+                destination: Group {
+                    if let recordToEdit = recordToEdit {
+                        EditRecordView(
+                            record: recordToEdit,
+                            table: table,
+                            dataService: dataService,
+                            onDismiss: {
+                                showingEditRecord = false
+                            }
+                        )
+                    }
+                },
+                isActive: $showingEditRecord
+            ) {
+                EmptyView()
+            }
+        )
     }
 }
 
 struct TableDataHeader: View {
     let table: SchemaTable
     @ObservedObject var dataService: DataService
-    @Binding var showingAddRecord: Bool
+    let onAddRecord: () -> Void
     
     var body: some View {
         HStack {
@@ -106,7 +126,7 @@ struct TableDataHeader: View {
                     .buttonStyle(.plain)
                 }
                 
-                Button(action: { showingAddRecord = true }) {
+                       Button(action: onAddRecord) {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
                         Text("Добавить запись")

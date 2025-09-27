@@ -3,42 +3,61 @@ import SwiftUI
 struct AddRecordView: View {
     let table: SchemaTable
     let dataService: DataService
-    @Environment(\.dismiss) private var dismiss
+    let onDismiss: () -> Void
     
     @State private var fieldValues: [String: String] = [:]
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var isSaving = false
     
-    init(table: SchemaTable, dataService: DataService) {
+    init(table: SchemaTable, dataService: DataService, onDismiss: @escaping () -> Void) {
         self.table = table
         self.dataService = dataService
+        self.onDismiss = onDismiss
     }
     
     var body: some View {
-        NavigationView {
-            DynamicFormView(
-                table: table,
-                fieldValues: $fieldValues
-            )
-            .navigationTitle("Новая запись")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") {
-                        dismiss()
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Button(action: onDismiss) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Назад")
                     }
+                    .font(.subheadline)
                 }
+                .buttonStyle(.plain)
                 
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Сохранить") {
-                        saveRecord()
-                    }
-                    .disabled(isSaving)
+                Spacer()
+                
+                Text("Новая запись")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                
+                Spacer()
+                
+                Button("Сохранить") {
+                    saveRecord()
                 }
+                .disabled(isSaving)
+                .buttonStyle(.borderedProminent)
             }
-            .onAppear {
-                initializeFieldValues()
+            .padding()
+            
+            Divider()
+            
+            // Form content
+            ScrollView {
+                DynamicFormView(
+                    table: table,
+                    fieldValues: $fieldValues
+                )
+                .padding()
             }
+        }
+        .onAppear {
+            initializeFieldValues()
         }
         .alert("Ошибка", isPresented: $showingError) {
             Button("OK") { }
@@ -87,10 +106,10 @@ struct AddRecordView: View {
         // Save via DataService
         dataService.createRecord(record)
         
-        // Close the sheet after a short delay to allow for the record to be created
+        // Close the page after a short delay to allow for the record to be created
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isSaving = false
-            dismiss()
+            onDismiss()
         }
     }
 }
@@ -107,6 +126,7 @@ struct AddRecordView: View {
     
     return AddRecordView(
         table: sampleTable,
-        dataService: DataService()
+        dataService: DataService(),
+        onDismiss: {}
     )
 }

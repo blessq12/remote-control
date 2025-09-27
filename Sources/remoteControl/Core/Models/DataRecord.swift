@@ -1,6 +1,6 @@
 import Foundation
 
-struct DataRecord: Identifiable, Codable {
+struct DataRecord: Identifiable, Codable, Hashable {
     let id: UUID
     var data: [String: AnyCodable]
     let createdAt: Date?
@@ -132,5 +132,16 @@ struct AnyCodable: Codable {
             let context = EncodingError.Context(codingPath: container.codingPath, debugDescription: "AnyCodable value cannot be encoded")
             throw EncodingError.invalidValue(value, context)
         }
+    }
+}
+
+// MARK: - Hashable conformance
+extension DataRecord {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: DataRecord, rhs: DataRecord) -> Bool {
+        return lhs.id == rhs.id
     }
 }
