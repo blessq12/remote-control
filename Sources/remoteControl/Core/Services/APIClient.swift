@@ -241,9 +241,7 @@ enum APIError: LocalizedError {
 // MARK: - Response Models
 
 struct CheckAccessResponse: Codable {
-    let status: String
-    let message: String?
-    let timestamp: Date?
+    let message: String
 }
 
 struct EmptyResponse: Codable {

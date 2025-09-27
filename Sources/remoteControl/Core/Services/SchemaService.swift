@@ -69,14 +69,40 @@ class SchemaService: ObservableObject {
             .sink(
                 receiveCompletion: { [weak self] completion in
                     if case .failure(let apiError) = completion {
-                        self?.connectionStatus = .failed(apiError.errorDescription ?? "Ошибка соединения")
+                        let errorMessage = self?.getConnectionErrorMessage(for: apiError) ?? "Ошибка соединения"
+                        self?.connectionStatus = .failed(errorMessage)
                     }
                 },
                 receiveValue: { [weak self] isConnected in
-                    self?.connectionStatus = isConnected ? .connected : .failed("Сервер недоступен")
+                    self?.connectionStatus = isConnected ? .connected : .failed("Неверный ключ авторизации")
                 }
             )
             .store(in: &cancellables)
+    }
+    
+    private func getConnectionErrorMessage(for error: APIError) -> String {
+        switch error {
+        case .unauthorized:
+            return "Неверный ключ авторизации"
+        case .forbidden:
+            return "Доступ запрещен"
+        case .notFound:
+            return "Сервер не поддерживает проверку соединения"
+        case .badRequest:
+            return "Неверный запрос"
+        case .serverError(let code):
+            return "Ошибка сервера (\(code))"
+        case .networkError:
+            return "Ошибка сети"
+        case .invalidURL:
+            return "Неверный URL"
+        case .invalidResponse:
+            return "Неверный ответ сервера"
+        case .decodingFailed:
+            return "Ошибка обработки данных"
+        case .unknownError(let code):
+            return "Неизвестная ошибка (\(code))"
+        }
     }
     
     func clearSchema() {
