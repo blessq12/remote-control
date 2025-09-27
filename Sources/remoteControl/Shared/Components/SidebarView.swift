@@ -45,9 +45,7 @@ struct SidebarView: View {
             CompanyFormView(companyStorage: companyStorage)
         }
         .sheet(isPresented: $showingEditCompany) {
-            if let companyToEdit = companyToEdit {
-                CompanyFormView(companyStorage: companyStorage, company: companyToEdit)
-            }
+            CompanyFormView(companyStorage: companyStorage, company: companyToEdit)
         }
     }
 }
