@@ -9,6 +9,7 @@ struct AddRecordView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var isSaving = false
+    @State private var formView: DynamicFormView?
     
     init(table: SchemaTable, dataService: DataService, onDismiss: @escaping () -> Void) {
         self.table = table
@@ -54,10 +55,25 @@ struct AddRecordView: View {
                     fieldValues: $fieldValues
                 )
                 .padding()
+                .onAppear {
+                    // Сохраняем ссылку на форму для обновления ошибок
+                    if formView == nil {
+                        formView = DynamicFormView(table: table, fieldValues: $fieldValues)
+                    }
+                }
             }
         }
         .onAppear {
             initializeFieldValues()
+        }
+        .onReceive(dataService.$validationErrors) { errors in
+            // Обновляем ошибки валидации в форме
+            formView?.setValidationErrors(errors)
+        }
+        .onReceive(dataService.$error) { error in
+            if let error = error {
+                formView?.setGeneralError(error)
+            }
         }
         .alert("Ошибка", isPresented: $showingError) {
             Button("OK") { }
@@ -103,13 +119,20 @@ struct AddRecordView: View {
         
         let record = DataRecord(data: data)
         
+        // Clear previous validation errors
+        dataService.clearValidationErrors()
+        formView?.clearValidationErrors()
+        
         // Save via DataService
         dataService.createRecord(record)
         
         // Close the page after a short delay to allow for the record to be created
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             isSaving = false
-            onDismiss()
+            // Only dismiss if no validation errors
+            if dataService.validationErrors.isEmpty {
+                onDismiss()
+            }
         }
     }
 }

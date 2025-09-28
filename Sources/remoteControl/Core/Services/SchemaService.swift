@@ -102,6 +102,8 @@ class SchemaService: ObservableObject {
             return "Ошибка обработки данных"
         case .unknownError(let code):
             return "Неизвестная ошибка (\(code))"
+        case .validationError(let validationError):
+            return validationError.displayMessage
         }
     }
     

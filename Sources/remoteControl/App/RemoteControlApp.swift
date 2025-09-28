@@ -17,6 +17,7 @@ struct RemoteControlApp: App {
                     DispatchQueue.main.async {
                         NSApp.activate(ignoringOtherApps: true)
                     }
+                    
                 }
         }
         .windowStyle(.hiddenTitleBar)

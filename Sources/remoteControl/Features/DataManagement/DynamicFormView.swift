@@ -13,6 +13,7 @@ struct DynamicFormView: View {
     @Binding var fieldValues: [String: String]
     @State private var showingError = false
     @State private var errorMessage = ""
+    @State private var validationErrors: [String: String] = [:]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -38,7 +39,8 @@ struct DynamicFormView: View {
                         value: Binding(
                             get: { fieldValues[field.name] ?? "" },
                             set: { fieldValues[field.name] = $0 }
-                        )
+                        ),
+                        validationError: validationErrors[field.name]
                     )
                 }
             }
@@ -51,12 +53,26 @@ struct DynamicFormView: View {
         }
     }
     
-    // No client-side validation - server handles all validation
+    // MARK: - Validation Error Handling
+    
+    func setValidationErrors(_ errors: [String: String]) {
+        validationErrors = errors
+    }
+    
+    func clearValidationErrors() {
+        validationErrors.removeAll()
+    }
+    
+    func setGeneralError(_ message: String) {
+        errorMessage = message
+        showingError = true
+    }
 }
 
 struct FieldRowView: View {
     let field: SchemaField
     @Binding var value: String
+    let validationError: String?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -84,6 +100,19 @@ struct FieldRowView: View {
                 Text(description)
                     .font(.caption)
                     .foregroundColor(.secondary)
+            }
+            
+            // Показ ошибки валидации
+            if let validationError = validationError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.red)
+                        .font(.caption)
+                    Text(validationError)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                .padding(.top, 4)
             }
         }
         .padding(.vertical, 4)

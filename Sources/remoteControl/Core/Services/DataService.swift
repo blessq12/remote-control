@@ -7,6 +7,7 @@ class DataService: ObservableObject {
     @Published var error: String?
     @Published var connectionStatus: ConnectionStatus = .unknown
     @Published var pagination: PaginationInfo?
+    @Published var validationErrors: [String: String] = [:]
     
     private var cancellables = Set<AnyCancellable>()
     private var currentCompany: Company?
@@ -127,6 +128,11 @@ class DataService: ObservableObject {
             return
         }
         
+        // Логируем что отправляем
+        if let bodyString = String(data: data, encoding: .utf8) {
+            print("📤 DataService: Sending create data: \(bodyString)")
+        }
+        
         let recordsURL = "\(company.url)/api/remote/\(table.name)"
         
         apiClient.requestWithAuth(
@@ -139,11 +145,14 @@ class DataService: ObservableObject {
         .sink(
             receiveCompletion: { [weak self] completion in
                 if case .failure(let apiError) = completion {
-                    self?.error = apiError.errorDescription
+                    print("❌ DataService: Create failed with error: \(apiError.errorDescription ?? "Unknown error")")
+                    self?.handleAPIError(apiError)
                 }
             },
             receiveValue: { [weak self] newRecord in
+                print("✅ DataService: Create successful, received record with ID: \(newRecord.id), server ID: \(newRecord.serverId ?? "none")")
                 self?.records.append(newRecord)
+                self?.clearValidationErrors()
             }
         )
         .store(in: &cancellables)
@@ -153,12 +162,24 @@ class DataService: ObservableObject {
         guard let company = currentCompany,
               let table = currentTable else { return }
         
+        // Кодируем запись с ID для обновления
         guard let data = try? JSONEncoder().encode(record) else {
             error = "Ошибка кодирования записи"
             return
         }
         
-        let recordURL = "\(company.url)/api/remote/\(table.name)/\(record.id)"
+        // Логируем что отправляем
+        if let bodyString = String(data: data, encoding: .utf8) {
+            print("📤 DataService: Sending update data: \(bodyString)")
+        }
+        
+        // Используем реальный ID сервера для URL
+        let recordId = record.serverId ?? record.id.uuidString
+        let recordURL = "\(company.url)/api/remote/\(table.name)/\(recordId)"
+        print("🔄 DataService: Updating record at URL: \(recordURL)")
+        print("🔄 DataService: Record ID: \(record.id) (local), \(record.serverId ?? "none") (server)")
+        print("🔄 DataService: Using server ID: \(recordId)")
+        print("🔄 DataService: Table name: \(table.name)")
         
         apiClient.requestWithAuth(
             url: recordURL,
@@ -170,13 +191,16 @@ class DataService: ObservableObject {
         .sink(
             receiveCompletion: { [weak self] completion in
                 if case .failure(let apiError) = completion {
-                    self?.error = apiError.errorDescription
+                    print("❌ DataService: Update failed with error: \(apiError.errorDescription ?? "Unknown error")")
+                    self?.handleAPIError(apiError)
                 }
             },
             receiveValue: { [weak self] updatedRecord in
+                print("✅ DataService: Update successful, received record with ID: \(updatedRecord.id)")
                 if let index = self?.records.firstIndex(where: { $0.id == updatedRecord.id }) {
                     self?.records[index] = updatedRecord
                 }
+                self?.clearValidationErrors()
             }
         )
         .store(in: &cancellables)
@@ -186,7 +210,11 @@ class DataService: ObservableObject {
         guard let company = currentCompany,
               let table = currentTable else { return }
         
-        let recordURL = "\(company.url)/api/remote/\(table.name)/\(record.id)"
+        // Используем реальный ID сервера для URL
+        let recordId = record.serverId ?? record.id.uuidString
+        let recordURL = "\(company.url)/api/remote/\(table.name)/\(recordId)"
+        print("🗑️ DataService: Deleting record at URL: \(recordURL)")
+        print("🗑️ DataService: Using server ID: \(recordId)")
         
         apiClient.requestWithAuth(
             url: recordURL,
@@ -247,6 +275,48 @@ class DataService: ObservableObject {
             return "Ошибка обработки данных"
         case .unknownError(let code):
             return "Неизвестная ошибка (\(code))"
+        case .validationError(let validationError):
+            return validationError.displayMessage
         }
+    }
+    
+    // MARK: - Validation Error Handling
+    
+    private func handleAPIError(_ error: APIError) {
+        switch error {
+        case .validationError(let validationError):
+            // Обработка ошибок валидации
+            var fieldErrors: [String: String] = [:]
+            
+            // Обрабатываем fieldErrors
+            if let fieldErrorsArray = validationError.fieldErrors {
+                for fieldError in fieldErrorsArray {
+                    fieldErrors[fieldError.field] = fieldError.message
+                }
+            }
+            
+            // Обрабатываем общие ошибки
+            if let errors = validationError.errors {
+                for (field, messages) in errors {
+                    fieldErrors[field] = messages.joined(separator: ", ")
+                }
+            }
+            
+            validationErrors = fieldErrors
+            
+            // Если есть общее сообщение, показываем его как общую ошибку
+            if !validationError.message.isEmpty && fieldErrors.isEmpty {
+                self.error = validationError.message
+            }
+            
+        default:
+            // Обычные ошибки
+            self.error = error.errorDescription
+            clearValidationErrors()
+        }
+    }
+    
+    func clearValidationErrors() {
+        validationErrors.removeAll()
     }
 }

@@ -5,19 +5,45 @@ struct DataRecord: Identifiable, Codable, Hashable {
     var data: [String: AnyCodable]
     let createdAt: Date?
     var updatedAt: Date?
+    let serverId: String? // Реальный ID с сервера
     
     init(data: [String: AnyCodable]) {
         self.id = UUID()
         self.data = data
         self.createdAt = nil
         self.updatedAt = nil
+        self.serverId = nil
     }
     
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: DynamicCodingKey.self)
         
-        // Генерируем UUID для локального использования
-        self.id = UUID()
+        // Извлекаем реальный ID с сервера
+        var actualServerId: String?
+        
+        if let serverId = try? container.decodeIfPresent(String.self, forKey: DynamicCodingKey(stringValue: "id")) {
+            actualServerId = serverId
+            // Пытаемся создать UUID из строки сервера
+            if let uuid = UUID(uuidString: serverId) {
+                self.id = uuid
+                print("✅ DataRecord: Using server UUID: \(serverId)")
+            } else {
+                // Если не UUID, генерируем локальный UUID, но сохраняем серверный ID
+                self.id = UUID()
+                print("⚠️ DataRecord: Server ID '\(serverId)' is not UUID, using local: \(self.id), server: \(serverId)")
+            }
+        } else if let serverIdInt = try? container.decodeIfPresent(Int.self, forKey: DynamicCodingKey(stringValue: "id")) {
+            // Если ID - число, сохраняем как строку
+            actualServerId = String(serverIdInt)
+            self.id = UUID()
+            print("⚠️ DataRecord: Server ID is integer \(serverIdInt), using local: \(self.id), server: \(actualServerId!)")
+        } else {
+            // Если нет ID, генерируем новый
+            self.id = UUID()
+            print("⚠️ DataRecord: No server ID found, generating new: \(self.id)")
+        }
+        
+        self.serverId = actualServerId
         
         // Извлекаем все поля кроме служебных
         var data: [String: AnyCodable] = [:]
@@ -42,15 +68,38 @@ struct DataRecord: Identifiable, Codable, Hashable {
         self.createdAt = try? container.decodeIfPresent(Date.self, forKey: DynamicCodingKey(stringValue: "created_at"))
         self.updatedAt = try? container.decodeIfPresent(Date.self, forKey: DynamicCodingKey(stringValue: "updated_at"))
         
-        print("📊 DataRecord: Final data has \(data.count) fields")
+        print("📊 DataRecord: Final data has \(data.count) fields, ID: \(self.id)")
     }
     
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: DynamicCodingKey.self)
         
-        // Кодируем все поля данных
+        // НЕ кодируем ID - сервер сам его назначит при создании
+        // ID нужен только для обновления существующих записей
+        
+        // Кодируем все поля данных напрямую (без обертки data)
         for (key, value) in data {
-            try container.encode(value, forKey: DynamicCodingKey(stringValue: key))
+            // Правильно обрабатываем разные типы данных
+            switch value.value {
+            case let stringValue as String:
+                // Если это JSON строка, пытаемся распарсить
+                if key.contains("json") || key.contains("JSON") {
+                    if let jsonData = stringValue.data(using: .utf8),
+                       let jsonObject = try? JSONSerialization.jsonObject(with: jsonData) {
+                        try container.encode(AnyCodable(jsonObject), forKey: DynamicCodingKey(stringValue: key))
+                    } else {
+                        try container.encode(stringValue, forKey: DynamicCodingKey(stringValue: key))
+                    }
+                } else {
+                    try container.encode(stringValue, forKey: DynamicCodingKey(stringValue: key))
+                }
+            case let arrayValue as [Any]:
+                try container.encode(AnyCodable(arrayValue), forKey: DynamicCodingKey(stringValue: key))
+            case let dictValue as [String: Any]:
+                try container.encode(AnyCodable(dictValue), forKey: DynamicCodingKey(stringValue: key))
+            default:
+                try container.encode(value, forKey: DynamicCodingKey(stringValue: key))
+            }
         }
         
         // Кодируем даты если они есть
@@ -62,9 +111,86 @@ struct DataRecord: Identifiable, Codable, Hashable {
         }
     }
     
+    // Специальный метод для кодирования с ID (для обновления)
+    func encodeWithId(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: DynamicCodingKey.self)
+        
+        // Кодируем ID для обновления (используем реальный ID сервера)
+        let recordId = serverId ?? id.uuidString
+        try container.encode(recordId, forKey: DynamicCodingKey(stringValue: "id"))
+        
+        // Кодируем все поля данных напрямую (без обертки data)
+        for (key, value) in data {
+            // Правильно обрабатываем разные типы данных
+            switch value.value {
+            case let stringValue as String:
+                // Если это JSON строка, пытаемся распарсить
+                if key.contains("json") || key.contains("JSON") {
+                    if let jsonData = stringValue.data(using: .utf8),
+                       let jsonObject = try? JSONSerialization.jsonObject(with: jsonData) {
+                        try container.encode(AnyCodable(jsonObject), forKey: DynamicCodingKey(stringValue: key))
+                    } else {
+                        try container.encode(stringValue, forKey: DynamicCodingKey(stringValue: key))
+                    }
+                } else {
+                    try container.encode(stringValue, forKey: DynamicCodingKey(stringValue: key))
+                }
+            case let arrayValue as [Any]:
+                try container.encode(AnyCodable(arrayValue), forKey: DynamicCodingKey(stringValue: key))
+            case let dictValue as [String: Any]:
+                try container.encode(AnyCodable(dictValue), forKey: DynamicCodingKey(stringValue: key))
+            default:
+                try container.encode(value, forKey: DynamicCodingKey(stringValue: key))
+            }
+        }
+        
+        // Кодируем даты если они есть
+        if let createdAt = createdAt {
+            try container.encode(createdAt, forKey: DynamicCodingKey(stringValue: "created_at"))
+        }
+        if let updatedAt = updatedAt {
+            try container.encode(updatedAt, forKey: DynamicCodingKey(stringValue: "updated_at"))
+        }
+    }
+    
+    // Создаем кодируемую версию с ID
+    var encodedWithId: Data? {
+        let encoder = JSONEncoder()
+        return try? encoder.encode(self)
+    }
+    
     private enum CodingKeys: String, CodingKey {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+    }
+}
+
+// Структура для кодирования записи с ID
+struct DataRecordWithId: Codable {
+    let id: String
+    let createdAt: Date?
+    let updatedAt: Date?
+    // Динамические поля будут добавлены через encode(to:)
+    
+    init(record: DataRecord) {
+        self.id = record.serverId ?? record.id.uuidString
+        self.createdAt = record.createdAt
+        self.updatedAt = record.updatedAt
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: DynamicCodingKey.self)
+        
+        // Кодируем ID
+        try container.encode(id, forKey: DynamicCodingKey(stringValue: "id"))
+        
+        // Кодируем даты если они есть
+        if let createdAt = createdAt {
+            try container.encode(createdAt, forKey: DynamicCodingKey(stringValue: "created_at"))
+        }
+        if let updatedAt = updatedAt {
+            try container.encode(updatedAt, forKey: DynamicCodingKey(stringValue: "updated_at"))
+        }
     }
 }
 

@@ -45,12 +45,25 @@ class APIClient: ObservableObject {
         
         return session.dataTaskPublisher(for: request)
             .tryMap { data, response in
-                try self.validateResponse(data: data, response: response)
-                
-                // Debug: Print raw response
-                if let responseString = String(data: data, encoding: .utf8) {
-                    print("📡 APIClient: Raw response: \(responseString.prefix(500))...")
+                // Логируем статус код и заголовки ответа
+                if let httpResponse = response as? HTTPURLResponse {
+                    print("📡 APIClient: Response status: \(httpResponse.statusCode)")
+                    print("📡 APIClient: Response headers: \(httpResponse.allHeaderFields)")
                 }
+                
+                // Логируем полный ответ сервера
+                if let responseString = String(data: data, encoding: .utf8) {
+                    if responseString.count > 1000 {
+                        print("📡 APIClient: Response body (first 1000 chars): \(String(responseString.prefix(1000)))...")
+                        print("📡 APIClient: Response body (last 500 chars): ...\(String(responseString.suffix(500)))")
+                    } else {
+                        print("📡 APIClient: Response body: \(responseString)")
+                    }
+                } else {
+                    print("📡 APIClient: Response body: (binary data, \(data.count) bytes)")
+                }
+                
+                try self.validateResponse(data: data, response: response)
                 
                 return data
             }
@@ -165,6 +178,10 @@ class APIClient: ObservableObject {
         case 200...299:
             return // Success
         case 400:
+            // Попытка парсинга ошибки валидации
+            if let validationError = parseValidationError(from: data) {
+                throw APIError.validationError(validationError)
+            }
             throw APIError.badRequest
         case 401:
             throw APIError.unauthorized
@@ -179,18 +196,44 @@ class APIClient: ObservableObject {
         }
     }
     
+    // MARK: - Validation Error Parsing
+    
+    private func parseValidationError(from data: Data) -> ServerValidationError? {
+        // Попытка парсинга как ValidationErrorResponse
+        if let errorResponse = try? JSONDecoder().decode(ValidationErrorResponse.self, from: data) {
+            return errorResponse.error
+        }
+        
+        // Попытка парсинга как ServerValidationError напрямую
+        if let validationError = try? JSONDecoder().decode(ServerValidationError.self, from: data) {
+            return validationError
+        }
+        
+        // Попытка парсинга простого сообщения об ошибке
+        if let errorDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let message = errorDict["message"] as? String {
+            return ServerValidationError(
+                message: message,
+                errors: nil,
+                fieldErrors: nil
+            )
+        }
+        
+        return nil
+    }
+    
     // MARK: - Logging
     
     private func logRequest(_ request: URLRequest) {
-        #if DEBUG
         print("🌐 API Request: \(request.httpMethod ?? "GET") \(request.url?.absoluteString ?? "")")
         if let headers = request.allHTTPHeaderFields {
             print("📋 Headers: \(headers)")
         }
         if let body = request.httpBody, let bodyString = String(data: body, encoding: .utf8) {
-            print("📦 Body: \(bodyString)")
+            print("📦 Request Body: \(bodyString)")
+        } else {
+            print("📦 Request Body: (empty)")
         }
-        #endif
     }
 }
 
@@ -217,6 +260,7 @@ enum APIError: LocalizedError {
     case notFound
     case serverError(Int)
     case unknownError(Int)
+    case validationError(ServerValidationError)
     
     var errorDescription: String? {
         switch self {
@@ -240,6 +284,8 @@ enum APIError: LocalizedError {
             return "Ошибка сервера (\(code))"
         case .unknownError(let code):
             return "Неизвестная ошибка (\(code))"
+        case .validationError(let validationError):
+            return validationError.displayMessage
         }
     }
 }
